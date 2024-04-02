@@ -4,7 +4,7 @@ import praw
 import pandas as pd
 import matplotlib.pyplot as plt
 
-pip install textblob==0.15.3
+!pip install textblob==0.15.3
 
 # Reddit API credentials
 client_id = 'eYFGVlKjL-cBrrg6VZOmqQ'
