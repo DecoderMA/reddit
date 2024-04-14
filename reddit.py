@@ -2,8 +2,7 @@ import streamlit as st
 from textblob import TextBlob
 import praw
 import pandas as pd
-import matplotlib.pyplot as plt
-from datetime import datetime
+import plotly.express as px
 
 # Reddit API credentials
 client_id = 'eYFGVlKjL-cBrrg6VZOmqQ'
@@ -29,32 +28,30 @@ st.title('Live Sentiment Analysis of Reddit Posts about Chatgpt')
 # Get posts based on subreddit
 subreddit_name ="Chatgpt"
 if True:
-    st.write(f'Recent posts in subreddit: {subreddit_name}')
+    st.sidebar.write(f'Recent posts in subreddit: {subreddit_name}')
     subreddit = reddit.subreddit(subreddit_name)
-    posts = subreddit.hot(limit=25)
+    posts = subreddit.new(limit=None)
 
     post_data = {'Title': [], 'Sentiment': [], 'Created At': []}
-    i=1
     for post in posts:
-        i=i+1
-        post_data['Title'].append(post.title)
-        post_data['Sentiment'].append(analyze_sentiment(post.title))
-        post_data['Created At'].append(post.created_utc)
-        if i>=5:
-            break
+        # Check if the post is after April 1st
+        if post.created_utc >= 1617235200:  # April 1st, 2022 in UTC timestamp
+            post_data['Title'].append(post.title)
+            post_data['Sentiment'].append(analyze_sentiment(post.title))
+            post_data['Created At'].append(pd.to_datetime(post.created_utc, unit='s'))
 
     df = pd.DataFrame(post_data)
-
-    st.write('Latest Chatgpt Posts:')
-    for i, row in df.iterrows():
-        st.write(f'Title: {row["Title"]}')
-        st.write(f'Sentiment: {row["Sentiment"]}')
-
-    # Plot time series sentiment
-    st.write('Sentiment Over Time:')
-    df['Created At'] = pd.to_datetime(df['Created At'], unit='s')
-    df['Sentiment'].value_counts().plot(kind='bar')
-    plt.xlabel('Sentiment')
-    plt.ylabel('Count')
-    plt.xticks(rotation=45)
-    st.pyplot(plt)
+    
+    st.sidebar.write('## Latest Posts About Chatgpt:')
+    for i, row in df.head(5).iterrows():
+        st.sidebar.write(f'Title: {row["Title"]}')
+        st.sidebar.write(f'Sentiment: {row["Sentiment"]}')
+        
+    # Plot time series graph using Plotly
+    st.write('## Sentiment Over Time:')
+    sentiment_counts = df.groupby([df['Created At'].dt.date, 'Sentiment']).size().unstack(fill_value=0)
+    fig = px.line(sentiment_counts, x=sentiment_counts.index, y=sentiment_counts.columns,
+                  title='Sentiment Distribution Over Time',
+                  labels={'value': 'Count', 'index': 'Date', 'variable': 'Sentiment'})
+    fig.update_layout(hovermode="x unified")  # Display hover info for all points on the x-axis
+    st.plotly_chart(fig, use_container_width=True)
